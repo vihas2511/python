@@ -1,0 +1,49 @@
+gi_date_month_expr = '''SUBSTR(actual_gi_date,6,2)'''
+
+gi_date_year_expr = '''SUBSTR(actual_gi_date,1,4)'''
+
+gr_posting_date_month_expr = '''SUBSTR(goods_receipt_post_date,6,2)'''
+
+gr_posting_date_year_expr = '''SUBSTR(goods_receipt_post_date,1,4)'''
+
+gi_3lettermonth_expr = '''
+    CASE
+        WHEN gi_date_month = '01' THEN 'JAN'
+        WHEN gi_date_month = '02' THEN 'FEB'
+        WHEN gi_date_month = '03' THEN 'MAR'
+        WHEN gi_date_month = '04' THEN 'APR'
+        WHEN gi_date_month = '05' THEN 'MAY'
+        WHEN gi_date_month = '06' THEN 'JUN'
+        WHEN gi_date_month = '07' THEN 'JUL'
+        WHEN gi_date_month = '08' THEN 'AUG'
+        WHEN gi_date_month = '09' THEN 'SEP'
+        WHEN gi_date_month = '10' THEN 'OCT'
+        WHEN gi_date_month = '11' THEN 'NOV'
+        WHEN gi_date_month = '12' THEN 'DEC'
+        ELSE ""
+    END'''
+
+gr_posting_3lettermonth_expr = '''
+    CASE
+        WHEN gr_posting_date_month = '01' THEN 'JAN'
+        WHEN gr_posting_date_month = '02' THEN 'FEB'
+        WHEN gr_posting_date_month = '03' THEN 'MAR'
+        WHEN gr_posting_date_month = '04' THEN 'APR'
+        WHEN gr_posting_date_month = '05' THEN 'MAY'
+        WHEN gr_posting_date_month = '06' THEN 'JUN'
+        WHEN gr_posting_date_month = '07' THEN 'JUL'
+        WHEN gr_posting_date_month = '08' THEN 'AUG'
+        WHEN gr_posting_date_month = '09' THEN 'SEP'
+        WHEN gr_posting_date_month = '10' THEN 'OCT'
+        WHEN gr_posting_date_month = '11' THEN 'NOV'
+        WHEN gr_posting_date_month = '12' THEN 'DEC'
+        ELSE ""
+    END'''
+
+country_to_desc_expr = '''
+    CASE 
+        WHEN country_to_code              = "US" 
+            AND COALESCE(country_to_desc, "") = ""  
+                THEN "UNITED STATES" 
+        ELSE country_to_desc 
+    END'''
