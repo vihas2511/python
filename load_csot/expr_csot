@@ -1,0 +1,200 @@
+dest_sold_to_name_expr = '''
+    CASE
+        WHEN ship_to_party_code = "2000012717"
+            THEN "THE KROGER COMPANY"
+        WHEN country_to_code       = "US"
+            AND (sold_to_party_desc LIKE "SAM\'S %" OR sold_to_party_desc LIKE "SAMS %")
+                THEN "WMRT - TOTAL SAMS"
+        WHEN country_to_code       = "CA"
+            AND sold_to_party_desc LIKE "%LOBLAW%"
+                THEN "LOBLAWS INC"
+        WHEN country_to_code       = "CA"
+            AND sold_to_party_desc LIKE "%COSTCO%"
+                THEN "COSTCO CANADA"
+        WHEN country_to_code       = "CA"
+            AND sold_to_party_desc = "THE PROCTER & GAMBLE COMPANY"
+            AND true_frt_type_desc = "CUSTOMER"
+                THEN customer_desc
+        WHEN country_to_code       = "CA"
+            AND sold_to_party_desc LIKE "%WALMART / MONARCH%"
+            OR sold_to_party_desc  LIKE "%WAL-MART%"
+            OR sold_to_party_desc  LIKE "%SUPPLY CHAIN%"
+                THEN "WAL-MART CANADA CORP"
+        ELSE sold_to_party_desc
+    END'''
+
+lot_delay_code_expr = '''
+    CASE
+        WHEN lot_delay_reason_code IS NOT NULL THEN lot_delay_reason_code
+        ELSE "Not Assigned"
+    END'''
+
+lot_delay_code_desc_exp = '''
+    CASE
+        WHEN lot_delay_reason_code_desc IS NOT NULL THEN lot_delay_reason_code_desc
+        ELSE "Not Assigned"
+    END'''
+
+otd_cnt_expr = '''
+    CASE
+        WHEN ship_cond_code <> "" THEN otd_cnt
+        ELSE 0
+    END'''
+
+tat_late_cnt_expr = '''
+    CASE
+        WHEN lot_ontime_status_last_appt_val <> "" THEN tat_late_counter_val
+        ELSE 0
+    END'''
+
+lot_delay_buck_expr = '''
+    CASE
+        WHEN length(coalesce(lot_exception_categ_val, '')) > 1 THEN lot_exception_categ_val
+        ELSE "Not Assigned"
+    END'''
+
+lot_flag_expr = '''
+    CASE
+        WHEN lot_flag = 1 THEN "Yes"
+        ELSE "No"
+    END'''
+
+fa_flag_expr = '''
+    CASE
+        WHEN true_fa_flag = "Y" THEN 1
+        ELSE 0
+    END'''
+
+exception_expr = '''
+    CASE
+        WHEN lot_flag_y_n <> "" THEN "No"
+        ELSE "Yes"
+    END'''
+
+prim_carr_flag_new_expr = '''
+    CASE
+        WHEN primary_carr_flag = 1 THEN "Y"
+        ELSE "N"
+    END'''
+
+parent_carrier_name_expr = '''
+    CASE
+        WHEN primary_carr_flag_new = "Y" THEN carr_desc
+        ELSE NULL
+    END'''
+
+gbu_new_exp = '''
+    CASE
+        WHEN gbu_code = "" THEN gbu
+        ELSE gbu_code
+    END'''
+
+channel_new_exp = '''
+    CASE
+        WHEN country_to_code = "US"
+            AND true_frt_type_desc = "CUSTOMER"
+            AND (channel IS NULL OR country_code = "CAN")
+                THEN "Non SAMBC (US)"
+        WHEN country_to_code = "CA"
+            AND true_frt_type_desc = "CUSTOMER"
+            AND ( ship_to_party_desc LIKE "%LOBLAW%"
+            OR ship_to_party_desc LIKE "%COSTCO%"
+            OR ship_to_party_desc LIKE "%WALMART / MONARCH %"
+            OR ship_to_party_desc LIKE "%WAL-MART %"
+            OR ship_to_party_desc LIKE "%WALMART %"
+            OR ship_to_party_desc LIKE "%SUPPLY CHAIN %"
+                )
+                THEN "Canada"
+        WHEN country_to_code = "CA"
+            AND true_frt_type_desc = "CUSTOMER"
+            AND channel IS NULL AND 
+            (ship_to_party_desc NOT LIKE "%LOBLAW%"
+            AND ship_to_party_desc NOT LIKE "%COSTCO%"
+            AND ship_to_party_desc  NOT LIKE "%WALMART / MONARCH %"
+            AND ship_to_party_desc NOT LIKE "%WAL-MART %"
+            AND ship_to_party_desc NOT LIKE "%WALMART %"
+            AND ship_to_party_desc NOT LIKE "%SUPPLY CHAIN %")
+                THEN "Non SAMBC (CAN)"
+        WHEN country_to_code = "CA"
+            AND true_frt_type_desc = "CUSTOMER"
+            AND level_name <> "Destination SAP Ship-To"
+                THEN "Non SAMBC (CAN)"
+        WHEN true_frt_type_desc = "INTERPLANT"
+            AND channel IS NULL
+                THEN "OTHERS"
+        ELSE channel
+    END'''
+
+
+customer_exp = '''
+    CASE
+        WHEN country_to_code  = "US"
+            AND true_frt_type_desc = "CUSTOMER"
+            AND channel_new   = "Non SAMBC (US)"
+                THEN "Non SAMBC (US)"
+        WHEN country_to_code  = "CA"
+            AND true_frt_type_desc = "CUSTOMER"
+            AND (customer_name   <> "LOBLAWS INC"
+                AND customer_name <> "COSTCO CANADA"
+                AND customer_name <> "WAL-MART CANADA CORP")
+                    THEN "Non SAMBC (CAN)"
+        WHEN true_frt_type_desc = "INTERPLANT"
+            THEN "OTHERS"
+        ELSE COALESCE(customer_name, dest_sold_to_name)
+    END'''
+
+count_cdot_ontime_exp = '''
+    CASE
+        WHEN max_actl_delvry_datetime <= max_first_appointment_dlvry_datetime THEN 1
+        ELSE 0
+    END'''
+
+customer_new_exp = '''
+    CASE
+        WHEN (ship_to_party_desc LIKE "SAMS %" OR ship_to_party_desc LIKE "SAM\'S %") THEN "WMRT - TOTAL SAMS"
+        WHEN  country_to_code = "US"
+            AND true_frt_type_desc = "CUSTOMER"
+            AND ship_to_party_desc LIKE "%WALMART.COM%" THEN "WAL-MART.COM"
+        WHEN  country_to_code = "CA"
+            AND true_frt_type_desc = "CUSTOMER"
+            AND(ship_to_party_desc NOT LIKE "%LOBLAW%"
+            AND ship_to_party_desc NOT LIKE "%COSTCO%"
+            AND ship_to_party_desc  NOT LIKE "%WALMART / MONARCH %"
+            AND ship_to_party_desc NOT LIKE "%WAL-MART %"
+            AND ship_to_party_desc NOT LIKE "%WALMART %")
+                THEN "Non SAMBC (CAN)"
+        WHEN country_to_code = "CA"
+            AND true_frt_type_desc = "CUSTOMER"
+            AND ship_to_party_desc LIKE "%LOBLAWS%" THEN "LOBLAWS INC"
+         WHEN country_to_code = "CA"
+            AND true_frt_type_desc = "CUSTOMER"
+            AND ship_to_party_desc LIKE "%COSTCO%" THEN "COSTCO CANADA"
+         WHEN country_to_code = "CA"
+            AND true_frt_type_desc = "CUSTOMER"
+            AND (ship_to_party_desc LIKE "%WALMART / MONARCH %"
+            OR ship_to_party_desc LIKE "%WAL-MART %"
+            OR ship_to_party_desc LIKE "%WALMART %"
+            OR ship_to_party_desc LIKE "%SUPPLY CHAIN %"
+                )
+                THEN "WAL-MART CANADA CORP"
+        ELSE customer
+    END'''
+
+channel_final_exp = '''
+          CASE
+              WHEN (ship_to_party_desc LIKE "SAMS %" OR ship_to_party_desc LIKE "SAM\'S %") 
+                    THEN "Club"
+              ELSE channel_new
+          END'''
+
+lot_flag_div_exp = '''
+          CASE
+              WHEN LOT_Delay_Bucket = "Not Assigned" then 1
+              ELSE 0
+          END'''
+
+measur_ship_expr = "load_id"
+
+no_of_ship_on_time_expr = "load_id"
+
+percentage_on_time_expr = '''(No_Of_Shipment_On_Time_/no_of_measurable_shipments)'''
