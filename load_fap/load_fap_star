@@ -1,0 +1,155 @@
+'''Function loading the fap_star table
+'''
+
+import pyspark.sql.functions as f
+import utils
+from get_src_data import get_transfix as tvb
+from load_fap import expr_fap as expr
+
+
+def get_fap_star(logging, spark_session, target_db_name, trans_vsblt_db_name, staging_location, debug_mode_ind,
+                 debug_postfix):
+
+    freight_stats_df = \
+        tvb.get_freight_stats_na_merged_star(logging, spark_session, trans_vsblt_db_name, target_db_name,
+                                             staging_location, debug_mode_ind, debug_postfix) \
+        .withColumn("load_id", f.substring(f.col('shpmt_id'), -9, 9))\
+        .withColumnRenamed("frt_type_code", "freight_type_val").distinct()
+
+    # .drop("charge_kind_desc").withColumnRenamed("tms_charge_lvl_desc", "charge_kind_desc")\
+    fap_tfs_df = \
+        tvb.get_tfs(logging, spark_session, target_db_name, target_db_name, staging_location, debug_mode_ind,
+                    debug_postfix)\
+        .drop("ship_from_region_desc").drop("freight_type_val").drop("tdcval_code").drop("su_per_load_qty")\
+        .withColumnRenamed("tfs_origin_zone_name", "ship_from_region_desc")\
+        .withColumn("load_id", f.regexp_replace("shpmt_id", '^0', '')) \
+        .withColumn("country_to_desc", f.expr(expr.country_to_desc_expr))\
+        .withColumn("total_trans_cost_usd_amt", f.col("total_trans_cost_usd_amt").cast("float"))\
+        .withColumn("adjmt_cost_usd_amt", f.col("adjmt_cost_usd_amt").cast("float"))\
+        .withColumn("contract_cost_usd_amt", f.col("contract_cost_usd_amt").cast("float"))\
+        .withColumn("post_charge_cost_usd_amt", f.col("post_charge_cost_usd_amt").cast("float"))\
+        .withColumn("spot_cost_usd_amt", f.col("spot_cost_usd_amt").cast("float"))\
+        .withColumn("misc_cost_usd_amt", f.col("misc_cost_usd_amt").cast("float"))\
+        .withColumn("weight_per_load_qty", f.col("weight_per_load_qty").cast("float"))\
+        .withColumn("volume_per_load_qty", f.col("volume_per_load_qty").cast("float"))\
+        .withColumn("distance_per_load_qty", f.col("distance_per_load_qty").cast("float"))\
+        .withColumn("accrual_cost_usd_amt", f.col("accrual_cost_usd_amt").cast("float")) \
+        .withColumn("gi_to_gr_date_day_num", f.datediff(f.col("goods_receipt_post_date"), f.col("actual_gi_date")))
+
+    fap_otd_df = \
+        tvb.get_on_time_data_hub_star(logging, spark_session, target_db_name, target_db_name, staging_location,
+                                      debug_mode_ind, debug_postfix)\
+        .select("load_id", "ship_point_code", "ship_point_desc")
+
+    logging.info("Calculating Total Transportation Cost USD for Load.")
+
+    # REMOVED .distinct()\
+    fap_tfs_total_df = fap_tfs_df.select("load_id", "total_trans_cost_usd_amt")\
+        .groupBy("load_id")\
+        .agg(f.sum("total_trans_cost_usd_amt").alias("load_total_trans_cost_usd_amt"))
+
+    logging.info("Calculating Total Transportation Cost USD for Load finished.")
+
+    logging.info("Calculating columns in TFS data.")
+
+    fap_calc_tfs_df = fap_tfs_df.withColumn("gi_date_month", f.expr(expr.gi_date_month_expr))\
+        .withColumn("gi_date_year", f.expr(expr.gi_date_year_expr)) \
+        .withColumn("gr_posting_date_month", f.expr(expr.gr_posting_date_month_expr)) \
+        .withColumn("gr_posting_date_year", f.expr(expr.gr_posting_date_year_expr)) \
+        .withColumn("gi_3lettermonth", f.expr(expr.gi_3lettermonth_expr)) \
+        .withColumn("gr_posting_3lettermonth", f.expr(expr.gr_posting_3lettermonth_expr)) \
+        .withColumn("goods_issue_month_val", f.concat(f.col('gi_3lettermonth'), f.lit(' '), f.col('gi_date_year'))) \
+        .withColumn("goods_receipt_post_month_val", f.concat(f.col('gr_posting_3lettermonth'), f.lit(' '),
+                                                             f.col('gr_posting_date_year')))
+
+    utils.manageOutput(logging, spark_session, fap_calc_tfs_df, 0, "fap_calc_tfs_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+    logging.info("Calculating columns in TFS data has finished.")
+
+    logging.info("Get Max ship point values from on time data.")
+
+    fap_ship_point_otd_df = fap_otd_df.groupBy("load_id") \
+        .agg(f.max("ship_point_code").alias("ship_point_code"),
+             f.max("ship_point_desc").alias("ship_point_desc"))
+
+    logging.info("Get Max ship point values from on time data has finished.")
+
+    logging.info("Count values in TFS data.")
+
+    fap_cntd_delry_id_df = fap_calc_tfs_df.groupBy("load_id").agg(
+        f.countDistinct("dlvry_id").alias("dlvry_cnt"),
+        f.countDistinct("load_id").alias("shpmt_cnt"))
+
+    utils.manageOutput(logging, spark_session, fap_cntd_delry_id_df, 0, "fap_cntd_delry_id_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+    logging.info("Count values in TFS data has finished.")
+
+    logging.info("Join to final table.")
+
+    fap_join_df = fap_calc_tfs_df.join(fap_ship_point_otd_df, "load_id", how='left') \
+        .join(fap_cntd_delry_id_df, "load_id", how='left') \
+        .join(freight_stats_df, "load_id", how='left') \
+        .join(fap_tfs_total_df, "load_id", how='left') \
+        .groupBy("carr_desc", "freight_cost_charge_code", "charge_reason_code", "region_from_code", "country_to_code",
+                 "country_to_desc", "ship_from_region_desc", "trans_plan_point_code", "charge_kind_desc", "carr_id",
+                 "freight_type_val", "load_id", "ship_point_code", "ship_point_desc", "goods_issue_month_val",
+                 "goods_receipt_post_month_val", "flow_reason_val", "tms_freight_charge_desc", "freight_charge2_desc",
+                 ) \
+        .agg(f.max("dlvry_cnt").alias("dlvry_cnt"),
+             f.max("shpmt_cnt").alias("shpmt_cnt"),
+             f.sum("total_trans_cost_usd_amt").alias("total_trans_cost_usd_amt"),
+             f.max("load_total_trans_cost_usd_amt").alias("load_total_trans_cost_usd_amt"),
+             f.sum("adjmt_cost_usd_amt").alias("adjmt_cost_usd_amt"),
+             f.sum("accrual_cost_usd_amt").alias("accrual_cost_usd_amt"),
+             f.sum("contract_cost_usd_amt").alias("contract_cost_usd_amt"),
+             f.sum("post_charge_cost_usd_amt").alias("post_charge_cost_usd_amt"),
+             f.sum("spot_cost_usd_amt").alias("spot_cost_usd_amt"),
+             f.sum("misc_cost_usd_amt").alias("misc_cost_usd_amt"),
+             f.max("weight_per_load_qty").alias("weight_per_load_qty"),
+             f.max("volume_per_load_qty").alias("vol_per_load_qty"),
+             f.max("distance_per_load_qty").alias("distance_per_load_qty"),
+             f.max("gi_to_gr_date_day_num").alias("gi_to_gr_date_day_num")
+             ) \
+        .withColumnRenamed("ship_from_region_desc", "region_from_desc")\
+        .withColumn("last_update_utc_tmstp", f.to_utc_timestamp(f.from_unixtime(f.unix_timestamp()), 'PRT'))
+
+    utils.manageOutput(logging, spark_session, fap_join_df, 0, "fap_join_df", target_db_name, staging_location,
+                       debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+
+    logging.info("Join to final table has finished.")
+
+    return fap_join_df
+
+
+def load_fap_star(logging, config_module, debug_mode_ind, debug_postfix):
+    ''' Load the fap_star table'''
+
+    # Create a spark session
+    params = utils.ConfParams.build_from_module(logging, config_module, debug_mode_ind, debug_postfix)
+    #spark_params = utils.ConfParams.build_from_module(logging, config_spark_module, debug_mode_ind, debug_postfix)
+    spark_conf = list(set().union(
+        params.SPARK_GLOBAL_PARAMS,
+        params.SPARK_TFX_PARAMS)
+        )
+    spark_session = utils.get_spark_session(logging, 'tfx_fap', params.SPARK_MASTER, spark_conf)
+
+    #Remove debug tables (if they are)
+    utils.removeDebugTables(logging, spark_session, params.TARGET_DB_NAME, debug_mode_ind, debug_postfix)
+
+    logging.info("Started loading {}.fap_star table.".format(params.TARGET_DB_NAME))
+
+    # Get target table column list
+    target_table_cols = spark_session.table('{}.fap_star'.format(params.TARGET_DB_NAME)).schema.fieldNames()
+
+    fap_star_df = get_fap_star(logging, spark_session, params.TARGET_DB_NAME, params.TRANS_VB_DB_NAME,
+                               params.STAGING_LOCATION, debug_mode_ind, debug_postfix).select(target_table_cols)
+
+    logging.info("Inserting data into a table (overwriting old data)")
+
+    fap_star_df.write.insertInto(
+        tableName='{}.{}'.format(params.TARGET_DB_NAME, 'fap_star'),
+        overwrite=True)
+    logging.info("Loading {}.fap_star table has finished".format(params.TARGET_DB_NAME))
+
+    # fap_star_df.repartition(1).write.mode('overwrite').format("com.databricks.spark.csv")\
+    #    .option("header", "true").save(params.STAGING_LOCATION+"/fap_report/")
