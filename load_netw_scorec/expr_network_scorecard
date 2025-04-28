@@ -1,0 +1,11 @@
+tendigit_carrier_id_expr = '''CASE
+                        WHEN LENGTH(carrier_id) = 6
+                            THEN CONCAT("0000",carrier_id)
+                        WHEN LENGTH(carrier_id) = 7
+                            THEN CONCAT("000",carrier_id)
+                        WHEN LENGTH(carrier_id) = 8
+                            THEN CONCAT("00",carrier_id)
+                        WHEN LENGTH(carrier_id) = 9
+                            THEN CONCAT("0",carrier_id)
+                            ELSE carrier_id
+                    END'''
