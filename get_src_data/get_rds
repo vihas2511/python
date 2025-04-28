@@ -1,0 +1,47 @@
+''' Set of functions getting customer information from RDS
+'''
+
+import utils
+
+
+def get_cust_dim(
+        logging, spark_session, src_db_name, target_db_name,
+        staging_location, debug_mode_ind, debug_postfix):
+    ''' Get a DF with cust_dim data. '''
+
+    logging.info("Started selecting cust_dim from {}.".format(src_db_name))
+    cust_dim_sql = """
+        SELECT 
+            cust_id 
+          , trade_chanl_curr_id AS trade_chanl_id
+        FROM {}.cust_dim
+        WHERE curr_ind='Y'""".format(src_db_name)
+
+    cust_dim_df = spark_session.sql(cust_dim_sql)
+
+    logging.info("Selecting cust_dim from {} has finished.".format(src_db_name))
+
+    return cust_dim_df
+
+
+def get_trade_chanl_hier_dim(
+        logging, spark_session, src_db_name, target_db_name,
+        staging_location, debug_mode_ind, debug_postfix):
+    ''' Get a DF with trade_chanl_hier_dim data. '''
+
+    logging.info("Started selecting trade_chanl_hier_dim from {}."
+                 .format(src_db_name))
+    trade_chanl_hier_dim_sql = """
+        SELECT 
+            trade_chanl_2_long_name AS channel_name
+          , trade_chanl_7_id        AS trade_chanl_id
+          --, trade_chanl_7_name AS channel_name
+        FROM {}.trade_chanl_hier_dim
+        WHERE curr_ind='Y'
+            AND trade_chanl_hier_id='658'""".format(src_db_name)
+
+    trade_chanl_hier_dim_df = spark_session.sql(trade_chanl_hier_dim_sql)
+
+    logging.info("Selecting trade_chanl_hier_dim from {} has finished."
+                 .format(src_db_name))
+    return trade_chanl_hier_dim_df
