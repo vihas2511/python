@@ -1,0 +1,284 @@
+'''Function loading rgvr
+'''
+
+import pyspark.sql.functions as f
+import utils
+from get_src_data import get_transfix as tvb
+from load_rgvr import expr_rgvr as expr
+
+
+def get_rgvr_star(
+        logging, spark_session, trans_vsblt_db_name, target_db_name, staging_location, debug_mode_ind, debug_postfix):
+    # .drop("service_code").drop("service_desc")
+    tariff_df = \
+        tvb.get_latest_tariffs(logging, spark_session, 'ap_transfix_tv_na', target_db_name, staging_location,
+                               debug_mode_ind, debug_postfix)
+
+    logging.info("Calculating Tariff data.")
+
+    grp_tariff_df = \
+        tariff_df.groupBy("lane_origin_zone_code",
+                          "origin_corp_code", "lane_dstn_zone_id",
+                          "carrier_id", "carrier_name",
+                          "service_code", "service_desc")\
+        .agg(
+            f.max("dest_zip_code").alias("dest_zip_code"),
+            f.max("dest_loc_desc").alias("dest_loc_desc"),
+            f.max("dest_corp_code").alias("dest_corp_code"),
+            f.max("tariff_id").alias("tariff_id"),
+            f.max("alloc_type_code").alias("alloc_type_code"),
+            f.max("alloc_profile_val").alias("alloc_profile_val"),
+            f.max("equip_type_code").alias("equip_type_code"),
+            f.max("status_code").alias("status_code"),
+            f.max("tariff_desc").alias("tariff_desc"),
+            f.max("mile_contract_rate").alias("mile_contract_rate"),
+            f.max("base_charge_amt").alias("base_charge_amt"),
+            f.max("min_charge_amt").alias("min_charge_amt"),
+            f.max("rate_eff_date").alias("rate_eff_date"),
+            f.max("rate_exp_date").alias("rate_expiry_date"),
+            f.sum("award_rate").alias("award_rate"),
+            f.max("dlvry_schedule_code").alias("dlvry_schedule_code"),
+            f.max("max_no_of_shpmt_cnt").alias("max_no_of_shpmt_cnt"),
+            f.max("rate_code").alias("rate_code"),
+            f.max("report_date").alias("report_date"))\
+        .withColumn("carr_id", f.regexp_replace(f.col('carrier_id'), '^0*', ''))\
+        .withColumn("dest_zip", f.regexp_replace(f.col('dest_zip_code'), ' ', ''))\
+        .drop("dest_zip_code").withColumn("dest_zip_code", f.regexp_replace(f.col('dest_zip'), '-', ''))\
+        .filter("alloc_type_code != ''").filter("alloc_profile_val != ''")
+
+    logging.info("Calculating Tariff data has finished.")
+
+    utils.manageOutput(logging, spark_session, grp_tariff_df, 1, "grp_tariff_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+
+    logging.info("Calculating Tac data.")
+
+    tac_df = \
+        tvb.get_tac(logging, spark_session, target_db_name, target_db_name, staging_location, debug_mode_ind,
+                    debug_postfix)\
+        .select("load_id", "origin_zone_ship_from_code", "origin_zone_code", "dest_ship_from_code", "dest_zone_code",
+                "tender_event_type_code", "tender_event_datetm", "actual_goods_issue_date", "daily_award_qty",
+                "actual_carr_trans_cost_amt", "incrmtl_freight_auction_cost_amt", "ship_to_party_id", "customer_code",
+                "freight_auction_flag", "carr_desc", "service_tms_code", "forward_agent_id", "postal_code", "final_stop_postal_code",
+                "carr_mode_code", "carr_mode_desc", "schedule_code", "freight_type_code") \
+        .withColumn("load_id", f.regexp_replace("load_id", '^0', ''))\
+        .withColumn("today_date", f.expr(expr.today_date_expr))\
+        .withColumn("dt_actual_ship_date", f.expr(expr.dt_actual_ship_date_expr))\
+        .withColumn("datediff_actualship", f.expr(expr.datediff_actualship_expr))\
+        .withColumn("incfa_load_id", f.expr(expr.incfa_load_id_expr))\
+        .withColumn("freight_auction_loads", f.expr(expr.freight_auction_loads_exp))\
+        .withColumn("loads_shipped", f.expr(expr.loads_shipped_exp))\
+        .filter('datediff_actualship <= 378')\
+
+    logging.info("Calculating Tac data has finished.")
+
+    utils.manageOutput(logging, spark_session, tac_df, 1, "tac_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+ 
+
+    logging.info("Calculating customer data from TAC data.")
+
+    customer_tac_df = tac_df.select("dest_ship_from_code", "dest_zone_code", "ship_to_party_id", "customer_code")\
+        .filter("dest_ship_from_code = dest_zone_code").withColumn("lane_dstn_zone_id", f.col("dest_ship_from_code"))\
+        .withColumnRenamed("ship_to_party_id", "customer_id").withColumnRenamed("customer_code", "customer_desc")\
+        .drop("dest_ship_from_code").drop("dest_zone_code").distinct()
+
+    logging.info("Calculating customer data from TAC data has finished.")
+
+    utils.manageOutput(logging, spark_session, customer_tac_df, 1, "customer_tac_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+
+    logging.info("Calculating max_tender_event_datetm from TAC data.")
+
+    max_tender_event_dttm = tac_df.groupBy("load_id")\
+        .agg(f.max("tender_event_datetm").alias("max_tender_event_datetm_"))
+
+    logging.info("Calculating max_tender_event_datetm from TAC data has finished.")
+
+    utils.manageOutput(logging, spark_session, max_tender_event_dttm, 1, "max_tender_event_dttm", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+
+    logging.info("Joining TAC data with max_tender_event_datetm (join 1).")
+
+    rgvr_join_df = tac_df.join(max_tender_event_dttm, "load_id", how='left') \
+        .where((tac_df.tender_event_datetm == max_tender_event_dttm.max_tender_event_datetm_) &
+               (tac_df.tender_event_type_code == 'TENDACC')) \
+        .withColumn("avg_award_weekly_vol_qty", f.expr(expr.avg_award_weekly_vol_qty_expr))\
+        .withColumn("campus_dest", f.expr(expr.campus_dest_expr))
+
+    utils.manageOutput(logging, spark_session, rgvr_join_df, 1, "rgvr_join_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+    logging.info("Joining TAC data with max_tender_event_datetm has finished.")
+
+    logging.info("Calculating counts - no of loads and incfa loads.")
+
+    rgvr_count_join_df = rgvr_join_df.groupBy("load_id")\
+        .agg(f.countDistinct("load_id").alias("no_of_loads_per_load_id"),
+             f.countDistinct("incfa_load_id").alias("no_of_incfaloads_per_load_id"))
+
+    logging.info("Calculating counts - no of loads and incfa loads has finished.")
+
+    utils.manageOutput(logging, spark_session, rgvr_count_join_df, 1, "rgvr_count_join_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+
+    logging.info("Aggregating TAC data (join 2).")
+
+    rgvr_join2_df = rgvr_join_df.join(rgvr_count_join_df, "load_id", how='left') \
+        .groupBy("origin_zone_code", "dest_zone_code", "load_id", "forward_agent_id",
+             "carr_desc", "service_tms_code") \
+        .agg(f.max("tender_event_type_code").alias("tender_event_type_code"),
+             f.max("tender_event_datetm").alias("tender_event_datetm"),
+             f.max("actual_goods_issue_date").alias("actual_goods_issue_date"),
+             f.sum("daily_award_qty").alias("daily_award_qty"),
+             f.sum("actual_carr_trans_cost_amt").alias("actual_carr_trans_cost_amt"),
+             f.sum("incrmtl_freight_auction_cost_amt").alias("incrmtl_freight_auction_cost_amt"),
+             f.sum("avg_award_weekly_vol_qty").alias("avg_award_weekly_vol_qty"),
+             f.sum("no_of_loads_per_load_id").alias("no_of_loads_per_load_id"),
+             f.sum("no_of_incfaloads_per_load_id").alias("no_of_incfaloads_per_load_id"),
+             f.max("origin_zone_ship_from_code").alias("origin_zone_ship_from_code"),
+             f.max("dest_ship_from_code").alias("dest_ship_from_code"),
+             f.max("postal_code").alias("postal_code"),
+             f.max("final_stop_postal_code").alias("final_stop_postal_code"),
+             f.max("carr_mode_code").alias("carr_mode_code"),
+             f.max("carr_mode_desc").alias("carr_mode_desc"),
+             f.max("schedule_code").alias("schedule_code"),
+             f.max("freight_type_code").alias("freight_type_code"),
+             f.max("freight_auction_loads").alias("freight_auction_loads"),
+             f.max("loads_shipped").alias("loads_shipped"),
+             f.max("campus_dest").alias("campus_dest"))\
+        .toDF("origin_zone_code", "dest_zone_code", "load_id", "forward_agent_id",
+              "carr_desc", "service_tms_code", "tender_event_type_code", "tender_event_datetm",
+              "actual_goods_issue_date", "daily_award_qty", "actual_carr_trans_cost_amt",
+              "incrmtl_freight_auction_cost_amt", "avg_award_weekly_vol_qty", "no_of_loads_per_load_id",
+              "no_of_incfaloads_per_load_id", "origin_zone_ship_from_code", "dest_ship_from_code", 
+              "postal_code", "final_stop_postal_code", "carr_mode_code", "carr_mode_desc",
+              "schedule_code", "freight_type_code", "freight_auction_loads", "loads_shipped", "campus_dest")
+
+    utils.manageOutput(logging, spark_session, rgvr_join2_df, 1, "rgvr_join2_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+    logging.info("Aggregating TAC data has finished.")
+
+    logging.info("Joining TAC data with aggregated values (join 3).")
+
+    rgvr_join3_1_df = \
+        grp_tariff_df\
+        .join(customer_tac_df, "lane_dstn_zone_id", how='left')\
+
+    utils.manageOutput(logging, spark_session, rgvr_join3_1_df, 1, "rgvr_join3_1_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+
+
+    rgvr_join3_df = \
+        rgvr_join3_1_df\
+        .join(rgvr_join2_df, (rgvr_join2_df.origin_zone_ship_from_code == rgvr_join3_1_df.origin_corp_code) &
+                                (rgvr_join2_df.campus_dest == rgvr_join3_1_df.lane_dstn_zone_id) &
+                                (rgvr_join2_df.forward_agent_id == rgvr_join3_1_df.carr_id ) &
+                                (rgvr_join2_df.carr_desc == rgvr_join3_1_df.carrier_name) &
+                                (rgvr_join2_df.service_tms_code == rgvr_join3_1_df.service_code), how='full') \
+        .withColumn("lane_name", f.expr(expr.lane_expr)).withColumn("lane_desc", f.expr(expr.lane_desc_expr)) \
+        .withColumn("annual_award_rate", f.expr(expr.annual_award_rate_expr)) \
+        .withColumnRenamed("origin_zone_code", "tac_origin_zone_code")\
+        .withColumnRenamed("dest_zone_code", "tac_dest_zone_code") \
+        .withColumnRenamed("origin_zone_ship_from_code", "origin_zone_code") \
+        .withColumnRenamed("campus_dest", "dest_zone_code") \
+        .withColumnRenamed("no_of_loads_per_load_id", "lane_ship_load_cnt") \
+        .withColumnRenamed("no_of_incfaloads_per_load_id", "lane_ship_fa_load_cnt") \
+        .withColumnRenamed("postal_code", "postal_code")\
+        .withColumnRenamed("final_stop_postal_code", "final_stop_postal_code")\
+        .withColumnRenamed("carr_mode_code", "carr_mode_code")\
+        .withColumnRenamed("carr_mode_desc", "carr_mode_desc")\
+        .withColumnRenamed("schedule_code", "schedule_code")\
+        .withColumnRenamed("freight_type_code", "freight_type_code")\
+        .withColumnRenamed("freight_auction_loads", "freight_auction_load_id")\
+        .withColumnRenamed("loads_shipped", "shipped_load_id")\
+        .withColumn("schedule_a_flag", f.expr(expr.schedule_a_flag_expr)) \
+        .withColumn("rgvr_origin_sf", f.expr(expr.rgvr_origin_sf_exp)) \
+        .withColumn("rgvr_dest_sf", f.expr(expr.rgvr_dest_sf_exp)) \
+        .withColumn("rgvr_dest_zip", f.expr(expr.rgvr_dest_zip_exp)) \
+        .withColumn("rgvr_carr_id", f.expr(expr.rgvr_carrier_id_exp)) \
+        .withColumn("rgvr_carr_desc", f.expr(expr.rgvr_carrier_desc_exp)) \
+        .withColumn("rgvr_service_code", f.expr(expr.rgvr_service_id_exp)) \
+        .withColumn("rgvr_service_desc", f.expr(expr.rgvr_service_desc_exp)) \
+        .withColumn("rgvr_campus_dest", f.expr(expr.rgvr_campus_dest_exp)) \
+        .withColumn("rgvr_lane_name", f.concat(f.col("rgvr_origin_sf"), f.lit("-"), f.col("rgvr_campus_dest")))\
+        .withColumn("rgvr_lane_zip_name", f.concat(f.col("rgvr_origin_sf"), f.lit("-"), f.col("rgvr_dest_zip")))\
+        .withColumn("schedule_id", f.expr(expr.schedule_id_expr))\
+        .drop("origin_zone_ship_from_code").drop("dest_ship_from_code")\
+        .drop("forward_agent_id").drop("carr_id").drop("carrier_name").drop("carr_desc") \
+        .drop("service_tms_code").drop("service_code").drop("service_desc")\
+
+    utils.manageOutput(logging, spark_session, rgvr_join3_df, 1, "rgvr_join3_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+    logging.info("Joining TAC data with aggregated values has finished.")
+
+    logging.info("Aggregating joined data.")
+
+    dest_sum_df = rgvr_join3_df.groupBy("rgvr_lane_name") \
+        .agg(f.sumDistinct("annual_award_rate").alias("annual_award_sum_by_dest_rate"))\
+
+    utils.manageOutput(logging, spark_session, dest_sum_df, 1, "dest_sum_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+
+    zip_sum_df = rgvr_join3_df.groupBy("rgvr_lane_zip_name") \
+        .agg(f.sumDistinct("annual_award_rate").alias("annual_award_sum_by_zip_rate"))\
+
+    utils.manageOutput(logging, spark_session, zip_sum_df, 1, "zip_sum_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+
+    logging.info("Aggregating joined data has finished.")
+
+    logging.info("Final join and adding/renaming columns (join 4).")
+
+    rgvr_final_df = rgvr_join3_df\
+        .join(dest_sum_df, "rgvr_lane_name", how='left')\
+        .join(zip_sum_df, "rgvr_lane_zip_name", how='left')\
+        .withColumn("gap_val", f.expr(expr.gap_val_expr)).withColumn("fa_pct", f.expr(expr.fa_pct_expr)) \
+        .withColumn("annual_lane_cost_amt", f.expr(expr.annual_lane_cost_amt_expr)) \
+        .withColumn("last_update_utc_tmstp", f.to_utc_timestamp(f.from_unixtime(f.unix_timestamp()), 'PRT')) \
+        .withColumnRenamed("dest_zip_code", "dest_postal_code")\
+        .withColumnRenamed("alloc_profile_val", "alloc_profile_desc")\
+        .withColumnRenamed("rgvr_origin_sf", "rgvr_origin_zone_ship_from_code")\
+        .withColumnRenamed("rgvr_dest_sf", "rgvr_dest_ship_from_code")\
+        .withColumnRenamed("rgvr_dest_zip", "rgvr_dest_zip_code")\
+        .withColumnRenamed("rgvr_campus_dest", "rgvr_campus_dest_ship_from_code")\
+        .withColumnRenamed("tariff_desc", "tariff_num").withColumnRenamed("tender_event_datetm", "tender_event_tmstp")\
+        .drop("dest_zone_code_sum").drop("origin_corp_code_sum").drop("rate_code")\
+
+
+    utils.manageOutput(logging, spark_session, rgvr_final_df, 1, "rgvr_final_df", target_db_name,
+                       staging_location, debug_mode_ind, "_{}{}".format(target_db_name, debug_postfix))
+    logging.info("Final join and adding/renaming columns has finished.")
+
+    return rgvr_final_df
+
+
+def load_rgvr(logging, config_module, debug_mode_ind, debug_postfix):
+    ''' Load the RGVR tables'''
+
+    # Create a spark session
+    params = utils.ConfParams.build_from_module(logging, config_module, debug_mode_ind, debug_postfix)
+    #spark_params = utils.ConfParams.build_from_module(logging, config_spark_module, debug_mode_ind, debug_postfix)
+    spark_conf = list(set().union(
+        params.SPARK_GLOBAL_PARAMS,
+        params.SPARK_TFX_PARAMS)
+        )
+    spark_session = utils.get_spark_session(logging, 'tfx_rgvr', params.SPARK_MASTER, spark_conf)
+
+    #Remove debug tables (if they are)
+    utils.removeDebugTables(logging, spark_session, params.TARGET_DB_NAME, debug_mode_ind, debug_postfix)
+
+    logging.info("Started loading {}.rgvr_star table.".format(params.TARGET_DB_NAME))
+
+    # Get target table column list
+    target_table_cols = spark_session.table('{}.rgvr_star'.format(params.TARGET_DB_NAME)).schema.fieldNames()
+
+    rgvr_star_df = \
+        get_rgvr_star(logging, spark_session, params.TRANS_VB_DB_NAME, params.TARGET_DB_NAME,
+                      params.STAGING_LOCATION, debug_mode_ind, debug_postfix).select(target_table_cols)
+
+    logging.info("Inserting data into a table (overwriting old data)")
+
+    rgvr_star_df.write.insertInto(
+        tableName='{}.{}'.format(params.TARGET_DB_NAME, 'rgvr_star'),
+        overwrite=True)
+    logging.info("Loading {}.rgvr_star table has finished".format(params.TARGET_DB_NAME))
