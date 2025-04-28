@@ -1,0 +1,41 @@
+lot_otd_count_expr = '''
+    CASE
+        WHEN length(COALESCE(ship_cond_code, 0)) > 1 AND otd_cnt > 0 THEN 1
+        ELSE 0
+    END'''
+
+lot_tat_late_counter_expr = '''
+    CASE
+        WHEN length(COALESCE(lot_ontime_status_last_appt_val, "")) > 0 THEN tat_late_counter_val
+        ELSE 0
+    END'''
+
+ship_month_expr = '''CAST((actual_ship_month_num%100) as INT)'''
+
+ship_year_expr = '''CAST((actual_ship_month_num/100) as INT)'''
+
+ship_3letter_expr = '''
+    CASE
+        WHEN CAST((actual_ship_month_num%100) as INT) = 1 THEN 'JAN'
+        WHEN CAST((actual_ship_month_num%100) as INT) = 2 THEN 'FEB'
+        WHEN CAST((actual_ship_month_num%100) as INT) = 3 THEN 'MAR'
+        WHEN CAST((actual_ship_month_num%100) as INT) = 4 THEN 'APR'
+        WHEN CAST((actual_ship_month_num%100) as INT) = 5 THEN 'MAY'
+        WHEN CAST((actual_ship_month_num%100) as INT) = 6 THEN 'JUN'
+        WHEN CAST((actual_ship_month_num%100) as INT) = 7 THEN 'JUL'
+        WHEN CAST((actual_ship_month_num%100) as INT) = 8 THEN 'AUG'
+        WHEN CAST((actual_ship_month_num%100) as INT) = 9 THEN 'SEP'
+        WHEN CAST((actual_ship_month_num%100) as INT) = 10 THEN 'OCT'
+        WHEN CAST((actual_ship_month_num%100) as INT) = 11 THEN 'NOV'
+        WHEN CAST((actual_ship_month_num%100) as INT) = 12 THEN 'DEC'
+        ELSE ""
+    END'''
+
+cntry_to_desc_expr = '''
+    CASE
+        WHEN country_to_code = "US" THEN "United States"
+        WHEN country_to_code = "CA" THEN "Canada"
+        WHEN country_to_code = "MX" THEN "Mexico"
+        WHEN country_to_code = "PR" THEN "Puerto Rico"
+        ELSE country_to_code
+    END'''
