@@ -1,0 +1,62 @@
+oblb_gross_weight_plan_qty_expr = '''
+    oblb_gross_weight_plan_qty * load_material_weight_qty
+'''
+
+oblb_gross_weight_shipped_qty_expr = '''
+    oblb_gross_weight_shipped_qty * load_material_weight_qty
+'''
+oblb_net_weight_plan_qty_expr = '''
+    oblb_net_weight_plan_qty * load_material_weight_qty
+'''
+
+oblb_gross_vol_plan_qty_expr = '''
+    oblb_gross_vol_plan_qty * load_material_vol_qty
+'''
+oblb_gross_vol_shipped_qty_expr = '''
+    oblb_gross_vol_shipped_qty * load_material_vol_qty
+'''
+
+oblb_net_vol_plan_qty_expr = '''
+    oblb_net_vol_plan_qty * load_material_vol_qty
+'''
+
+agg_gross_weight_qty_expr = '''
+    CASE
+        WHEN total_gross_weight_qty IS NULL THEN oblb_gross_weight_plan_qty * load_material_weight_qty
+        ELSE CAST(total_gross_weight_qty AS DECIMAL(38,4)) * CAST(load_material_weight_qty AS DECIMAL(38,4))
+    END
+'''
+
+agg_gross_vol_qty_expr = '''
+    CASE
+        WHEN total_gross_vol_qty IS NULL THEN oblb_gross_vol_plan_qty * load_material_vol_qty
+        ELSE CAST(total_gross_vol_qty AS DECIMAL(38,4)) * CAST(load_material_vol_qty AS DECIMAL(38,4))
+    END                                                                                                                  AS `Gross Volume as Planned by Material`
+'''
+
+agg_net_weight_qty_expr = '''CAST(plan_net_weight_qty AS DECIMAL(38,4)) * CAST(load_material_vol_qty AS DECIMAL(38,4))'''
+
+agg_net_vol_qty_expr = '''CAST(plan_net_vol_qty AS DECIMAL(38,4)) * CAST(load_material_vol_qty AS DECIMAL(38,4))'''
+
+gbu_desc_expr = '''case
+    when subsector_desc = 'APPLIANCES' then 'Appliances'
+    when subsector_desc = 'BABY CARE' then 'Baby Care'
+    when subsector_desc = 'PERSONAL POWER' then 'Batteries'
+    when subsector_desc = 'SKIN & PERSONAL CARE' then 'Beauty Care'
+    when subsector_desc = 'DISCONTINUED COSMETIC SS' then 'Beauty Care'
+    when subsector_desc = 'DISCONTINUED PRESTIGE SS' then 'Beauty Care'
+    when subsector_desc = 'DISCONTINUED PROF SALON' then 'Beauty Care'
+    when subsector_desc = 'XXX' then 'Chemicals'
+    when subsector_desc = 'FABRIC CARE' then 'Fabric Care'
+    when subsector_desc = 'FAMILY CARE' then 'Family Care'
+    when subsector_desc = 'HAIR CARE' then 'Female Hair Care'
+    when subsector_desc = 'DISCONTINUED HAIR COLOR' then 'Female Hair Care'
+    when subsector_desc = 'FEMININE CARE' then 'Feminine Care'
+    when subsector_desc = 'HOME CARE' then 'Home Care'
+    when subsector_desc = 'ORAL CARE' then 'Oral Care'
+    when subsector_desc = 'PERSONAL HC SBSC' then 'Personal Health Care'
+    when subsector_desc = 'SHAVE CARE' then 'Shave Care'
+    ELSE subsector_desc
+end'''
+
+load_gbu_id_expr = '''CONCAT(load_id, "-", gbu_desc)'''
