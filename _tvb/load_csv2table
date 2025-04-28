@@ -1,0 +1,165 @@
+import sys, os, glob, shutil
+sys.path.append('/dbfs/mnt/mount_blob/trans0vsblt0bw/prod/code/python')
+
+from datetime import datetime
+from pyspark.sql.types import *
+from pyspark.sql.functions import *
+import re
+
+
+def main_argparse(logging , args_lst):
+    ''' Parse input parameters '''
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config_module", required=True)
+    parser.add_argument("-cd", "--config_module_dir", help="Config module FS dir path", required=True)
+    parser.add_argument("-td", "--target_db_name", help="Target database", required=True)
+    parser.add_argument("-tt", "--target_tb_name", help="Target table", required=True)
+    parser.add_argument("-sft", "--load_tmstp_col", default="load_tmstp", help="Source file date column name (default=load_tmstp)")
+    parser.add_argument("-sfn", "--load_from_file_col", default="load_from_file", help="Source file name column name (default=load_from_file)")
+    parser.add_argument("-bdt", "--bd_mod_tmstp_col", default="bd_mod_tmstp", help="Big Data load timestamp column name (default=bd_mod_tmstp)")
+    parser.add_argument("-i", "--input_path", help="Input file path", required=True)
+    parser.add_argument("-d", "--delimiter", default="|", help="Source file delimiter (default=|)")
+    parser.add_argument("-p", "--primary_key", help="Table primary key (separated by ,)", required=True)
+    parser.add_argument("-a", "--archive_dir", help="Archive directory")
+    #Print parameters
+    args = parser.parse_args(args=args_lst)
+    for arg in vars(args):
+      logging.info("Input param: {} = {}".format(arg, getattr(args, arg)))
+    return args
+
+
+def main(args_lst):
+    ''' Main '''
+    try:
+        import logging
+        import utils
+        logging.basicConfig(
+                stream=sys.stderr,
+                level=logging.INFO,
+                format='%(levelname)s %(asctime)s %(funcName)s %(message)s',
+                datefmt='%m/%d/%Y %I:%M:%S %p')
+        # Turn off not needed logs
+        logging.getLogger("py4j").setLevel(logging.ERROR)
+        # get parameters
+        args = main_argparse(logging, args_lst)
+        # Load config module, change the DBFS to FS format if needed
+        sys.path.append(args.config_module_dir.replace("dbfs:/", '/dbfs/'))
+        params = utils.ConfParams.build_from_module(logging, args.config_module, 0, "")
+
+        # set variables
+        target_db_name=args.target_db_name        # dd_trans_vsblt_bw
+        target_tb_name=args.target_tb_name        # transport_type_na_dim_2
+        load_tmstp_col=args.load_tmstp_col
+        load_from_file_col=args.load_from_file_col
+        bd_mod_tmstp_col=args.bd_mod_tmstp_col
+        input_path=args.input_path                #='/mnt/mount_blob/dd_trans_vsblt_bw/staging/*.csv*'
+        delimiter=args.delimiter                  #='|'
+        primary_key=args.primary_key.split(",")  #["trans_type_id"]
+        order_by = [ "{}".format(load_tmstp_col), "{}".format(bd_mod_tmstp_col) ]  # ["load_tmstp", "bd_mod_tmstp"]
+
+        # Create a spark session
+        spark_session = utils.get_spark_session(logging, "load_tvb_{}".format(target_tb_name), 'yarn', params.SPARK_DEFAULT_PARAMS)
+
+        #target_db_name = params.TARGET_DB_NAME
+        #archive_dir = params.TARGET_DB_NAME
+
+        # Get target table setup
+        target_table_df = spark_session.table('{}.{}'.format(target_db_name, target_tb_name))
+        target_table_cols = target_table_df.schema.fieldNames()
+
+        create_table_df = spark_session.sql('show create table {}.{}'.format(target_db_name, target_tb_name))
+        for row in create_table_df.head(1):
+            location_search = re.search(r"['|\"]dbfs:[a-zA-Z0-9\/_]+['|\"]", row[0], re.IGNORECASE)
+            if location_search:
+                target_tb_dir_path = location_search.group(0).strip("' ")
+                logging.info("Table location: {}".format(target_tb_dir_path))
+                if len(target_tb_dir_path) == 0:
+                    raise Exception('Cannot extract target location path.')
+            else:
+               raise Exception('Cannot get target location path.')
+
+        # Read CSV file(s)
+        logging.info("Reading CSV file(s): {}".format(input_path))
+
+        csvFinalDataDf = spark_session.read.format('csv')\
+            .options(header='false', delimiter='{}'.format(delimiter), inferSchema='true', mode='FAILFAST')\
+            .load("{}".format(input_path))\
+            .withColumn("{}".format(load_from_file_col), input_file_name())\
+            .withColumn("{}".format(load_tmstp_col), regexp_extract(input_file_name(), "(20[0-9]{6})", 1))\
+            .withColumn("{}".format(bd_mod_tmstp_col), to_utc_timestamp(from_unixtime(unix_timestamp()), 'PRT').cast(StringType()))
+
+        # Change column names and data type for source data
+        logging.info("Set target coulmn names and datatype")
+
+        selExpr = []
+        target_table_types = target_table_df.dtypes
+        source_table_types = csvFinalDataDf.dtypes
+        i=0
+        for col in target_table_types:
+            target_table_name=col[0]
+            target_table_type=col[1]
+            try:
+              source_table_name=source_table_types[i][0]
+            except IndexError:
+              source_table_name=target_table_name
+          
+            if target_table_name == load_from_file_col or target_table_name == load_tmstp_col or target_table_name == bd_mod_tmstp_col:
+              selExpr.append("{}".format(target_table_name))
+            else:
+              selExpr.append("CAST({} AS {}) AS {}".format(source_table_name, target_table_type, target_table_name))
+            i += 1
+        
+        csvSelDataDf = csvFinalDataDf.selectExpr(selExpr)
+
+        # Calculate newest row for given key
+        partition_by_cols = ", ".join(primary_key)
+        order_by_cols = " DESC, ".join(order_by) + " DESC"
+        
+        load_rank_expr = "ROW_NUMBER() OVER (PARTITION BY {} ORDER BY {})".format(partition_by_cols, order_by_cols)
+
+        logging.info("Union and get latest data")
+
+        unionDF = target_table_df\
+            .union(csvSelDataDf)\
+            .withColumn("load_rank", expr(load_rank_expr))\
+            .filter("load_rank=1").drop("load_rank")
+
+        # Insert data to final table
+        logging.info("Insert data to final table {}.{} ({})".format(target_db_name, target_tb_name, target_tb_dir_path))
+
+        #unionDF.select(target_table_cols).write.insertInto(
+        #        tableName='{}.{}'.format(target_db_name, target_tb_name),
+        #        overwrite=True)
+
+        unionDF.write.format("parquet").mode("overwrite").save("{}".format(target_tb_dir_path))
+
+        logging.info("Refresh table {}.{}".format(target_db_name, target_tb_name))
+        spark_session.sql('REFRESH TABLE {}.{}'.format(target_db_name, target_tb_name))
+
+        #print(args.archive_dir)
+        if args.archive_dir:
+            archive_dir_fix = args.archive_dir.replace("dbfs:/", '/dbfs/')
+            files = [f for f in glob.glob("/dbfs" + input_path, recursive=False)]
+            logging.info(files)
+            for f in files:
+                shutil.copy2(f, archive_dir_fix)
+                logging.info("Archivied: {}/{}".format(archive_dir_fix, os.path.basename(f)))
+            for f in files:
+                os.remove(f)
+                logging.info("Deleted: {}".format(f))
+
+        logging.info("Execution ended")
+
+    except Exception as exception:
+        error_desc = "exception: {} at {}".format(type(exception), datetime.now())
+        print (error_desc)
+        sys.stderr.write(error_desc)
+        print("=" * 80)
+        print("exception: {} at {}".format(type(exception), datetime.now()))
+        logging.error(exception)
+        sys.stdout.flush()
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
