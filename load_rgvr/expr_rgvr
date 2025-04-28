@@ -1,0 +1,106 @@
+today_date_expr = '''from_unixtime(unix_timestamp())'''
+
+dt_actual_ship_date_expr = '''CAST(actual_goods_issue_date as TIMESTAMP)'''
+
+datediff_actualship_expr = '''DATEDIFF(from_unixtime(unix_timestamp()), CAST(actual_goods_issue_date as TIMESTAMP))'''
+
+avg_award_weekly_vol_qty_expr = "(daily_award_qty*7)"
+
+incfa_load_id_expr = '''
+    CASE
+        WHEN freight_auction_flag = "YES" THEN load_id
+        ELSE NULL
+    END'''
+
+lane_expr = '''
+    CASE
+        WHEN lane_origin_zone_code = ""
+            OR lane_dstn_zone_id   = ""
+                THEN CONCAT(origin_zone_code, "-", dest_zone_code)
+        ELSE CONCAT(lane_origin_zone_code, "-", lane_dstn_zone_id)
+    END'''
+
+lane_desc_expr = '''
+    CASE
+        WHEN origin_corp_code = ""
+            OR dest_loc_desc  = ""
+                THEN CONCAT(origin_zone_code, "-", dest_zone_code)
+        ELSE CONCAT(origin_corp_code, "-", dest_loc_desc)
+    END'''
+
+annual_award_rate_expr = '''
+    CASE
+        WHEN alloc_type_code = "Daily"  THEN award_rate * 365
+        WHEN alloc_type_code = "Weekly" THEN award_rate * 52
+        ELSE NULL
+    END'''
+
+schedule_a_flag_expr = '''
+    CASE
+        WHEN schedule_code = "A" THEN "Y"
+        ELSE "N"
+    END'''
+
+annual_sum_awards_expr = '''
+    CASE
+        WHEN alloc_type_code = "Daily"  THEN sum_award_rate_ * 365
+        WHEN alloc_type_code = "Weekly" THEN sum_award_rate_ * 52
+        ELSE NULL
+    END'''
+
+gap_val_expr = '''(annual_award_rate - annual_award_sum_by_dest_rate)'''
+
+fa_pct_expr = '''(lane_ship_fa_load_cnt / lane_ship_load_cnt)'''
+
+annual_lane_cost_amt_expr = '''
+    CASE
+        WHEN alloc_type_code = "Daily"  THEN incrmtl_freight_auction_cost_amt * 365
+        WHEN alloc_type_code = "Weekly" THEN incrmtl_freight_auction_cost_amt * 52
+        ELSE NULL
+    END'''
+
+annual_awards_exp = '''daily_award_qty * 365'''
+
+freight_auction_loads_exp = '''
+    CASE
+        WHEN freight_auction_flag = "YES" THEN load_id
+        ELSE NULL
+    END'''
+
+loads_shipped_exp = "load_id"
+
+rgvr_origin_sf_exp = '''
+    COALESCE(origin_zone_code, origin_corp_code)'''
+
+rgvr_dest_sf_exp = '''
+    COALESCE(dest_ship_from_code, lane_dstn_zone_id)'''
+
+rgvr_dest_zip_exp = '''
+    COALESCE(postal_code, dest_zip_code)'''
+
+schedule_id_expr = '''
+    CASE
+        WHEN substr(rate_code, 1, 1) = "A" THEN "A"
+        ELSE "B/C"
+    END'''
+
+rgvr_carrier_id_exp = '''
+    COALESCE(forward_agent_id, carr_id)'''
+
+rgvr_carrier_desc_exp = '''
+    COALESCE(carr_desc, carrier_name)'''
+
+rgvr_service_id_exp = '''
+    COALESCE(service_tms_code, service_code)'''
+
+rgvr_service_desc_exp = "service_desc"
+
+campus_dest_expr = '''
+    CASE
+        WHEN freight_type_code = "INTERPLANT" THEN substr(ship_to_party_id, -4, 4)
+        WHEN freight_type_code = "CUSTOMER" THEN dest_ship_from_code
+        ELSE NULL
+    END'''
+
+rgvr_campus_dest_exp = '''
+    COALESCE(dest_zone_code, lane_dstn_zone_id)'''
