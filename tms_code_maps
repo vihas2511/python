@@ -1,0 +1,500 @@
+INSERT INTO TABLE `tms_service_codes_map` 
+SELECT 
+  "TLDF" AS code_a, 
+  "DO NOT USE AFTER BID" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLSC" AS code_a, 
+  "DO NOT USE AFTER BID" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLSD" AS code_a, 
+  "DO NOT USE AFTER BID" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "HCP" AS code_a, 
+  "HCPT" AS code_g, 
+  "Ocean" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TOC" AS code_a, 
+  "TOCT" AS code_g, 
+  "Ocean" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TL" AS code_a, 
+  "W01T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLTO" AS code_a, 
+  "W02T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLBR" AS code_a, 
+  "W03T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLCG" AS code_a, 
+  "W04T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLNO" AS code_a, 
+  "W05T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLDE" AS code_a, 
+  "W06T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLLG" AS code_a, 
+  "W07T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLLT" AS code_a, 
+  "W08T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLHT" AS code_a, 
+  "W09T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLHC" AS code_a, 
+  "W10T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLLH" AS code_a, 
+  "W11T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLEV" AS code_a, 
+  "W12T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLEO" AS code_a, 
+  "W13T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLEC" AS code_a, 
+  "W14T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TECO" AS code_a, 
+  "W15T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLLE" AS code_a, 
+  "W16T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TELO" AS code_a, 
+  "W17T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLCD" AS code_a, 
+  "W18T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLDS" AS code_a, 
+  "W19T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLDC" AS code_a, 
+  "W20T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLHZ" AS code_a, 
+  "W22T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TL2R" AS code_a, 
+  "W23T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLDD" AS code_a, 
+  "W25T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLJ1" AS code_a, 
+  "W26T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLEX" AS code_a, 
+  "W27T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "W28T" AS code_a, 
+  "Y28T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PIM4" AS code_a, 
+  "WAP4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PIM5" AS code_a, 
+  "WAP5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PIM6" AS code_a, 
+  "WAP6" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PIM7" AS code_a, 
+  "WAP7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SIM2" AS code_a, 
+  "WAS2" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SIM3" AS code_a, 
+  "WAS3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SIM4" AS code_a, 
+  "WAS4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SIM5" AS code_a, 
+  "WAS5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SIM6" AS code_a, 
+  "WAS6" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SIM7" AS code_a, 
+  "WAS7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "WBS6" AS code_a, 
+  "YBS6" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "WBS7" AS code_a, 
+  "YBS7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PCD6" AS code_a, 
+  "WCP6" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SCD5" AS code_a, 
+  "WCS5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PDC6" AS code_a, 
+  "WDP6" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SDC6" AS code_a, 
+  "WDS6" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SLD5" AS code_a, 
+  "WFS5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SLD7" AS code_a, 
+  "WFS7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SHZ5" AS code_a, 
+  "WGS5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SHZ7" AS code_a, 
+  "WGS7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TLLD" AS code_a, 
+  "W21T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "TL2C" AS code_a, 
+  "W24T" AS code_g, 
+  "Truckload" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PIM3" AS code_a, 
+  "WAP3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "WBP3" AS code_a, 
+  "YBP3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "WBP4" AS code_a, 
+  "YBP4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "WBP5" AS code_a, 
+  "YBP5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "WBP6" AS code_a, 
+  "YBP6" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "WBP7" AS code_a, 
+  "YBP7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "WBS3" AS code_a, 
+  "YBS3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "WBS4" AS code_a, 
+  "YBS4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "WBS5" AS code_a, 
+  "YBS5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PCD3" AS code_a, 
+  "WCP3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PCD4" AS code_a, 
+  "WCP4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PCD5" AS code_a, 
+  "WCP5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PCD7" AS code_a, 
+  "WCP7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SCD3" AS code_a, 
+  "WCS3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SCD4" AS code_a, 
+  "WCS4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SCD5" AS code_a, 
+  "WCS5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SCD6" AS code_a, 
+  "WCS6" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SCD7" AS code_a, 
+  "WCS7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PDC3" AS code_a, 
+  "WDP3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PDC4" AS code_a, 
+  "WDP4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PDC5" AS code_a, 
+  "WDP5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PDC7" AS code_a, 
+  "WDP7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SDC3" AS code_a, 
+  "WDS3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SDC4" AS code_a, 
+  "WDS4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SDC5" AS code_a, 
+  "WDS5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SDC7" AS code_a, 
+  "WDS7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PDL3" AS code_a, 
+  "WEP3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PDL4" AS code_a, 
+  "WEP4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PDL5" AS code_a, 
+  "WEP5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PDL6" AS code_a, 
+  "WEP6" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PDL7" AS code_a, 
+  "WEP7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SDL3" AS code_a, 
+  "WES3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SDL4" AS code_a, 
+  "WES4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SDL5" AS code_a, 
+  "WES5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SDL6" AS code_a, 
+  "WES6" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SDL7" AS code_a, 
+  "WES7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PLD3" AS code_a, 
+  "WFP3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PLD4" AS code_a, 
+  "WFP4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PLD5" AS code_a, 
+  "WFP5" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PLD6" AS code_a, 
+  "WFP6" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "PLD7" AS code_a, 
+  "WFP7" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SLD3" AS code_a, 
+  "WFS3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SLD4" AS code_a, 
+  "WFS4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SLD6" AS code_a, 
+  "WFS6" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SHZ3" AS code_a, 
+  "WGS3" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SHZ4" AS code_a, 
+  "WGS4" AS code_g, 
+  "Intermodal" AS truckload_intermodal 
+UNION ALL 
+SELECT 
+  "SHZ6" AS code_a, 
+  "WGS6" AS code_g, 
+  "Intermodal" AS truckload_intermodal;
